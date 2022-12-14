@@ -1,13 +1,11 @@
 ---
 name: Bug report
-about: Asterisk Bug Report
+about: Asterisk Bug Report. See https://wiki.asterisk.org/wiki/display/AST/Asterisk+Issue+Guidelines
 title: "[component]: summary"
-labels: ''
+labels: 'bug,triage'
 assignees: ''
 
 ---
-
-If you haven't already, please review the [Asterisk Issue Guidelines](https://wiki.asterisk.org/wiki/display/AST/Asterisk+Issue+Guidelines)
 
 **Asterisk Versions this bug applies to**
 Example: 18.15, 20.0
