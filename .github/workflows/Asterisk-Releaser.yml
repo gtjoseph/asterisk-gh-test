@@ -1,0 +1,106 @@
+name: Asterisk Releaser
+run-name: ${{ github.actor }} is creating an Asterisk release
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Asterisk Branch to cut the release from'
+        required: true
+        type: choice
+        options:
+        - certified/18.9
+        - 18
+        - 20
+        - master
+      release_type:
+        description: "Next release type"
+        type: choice
+        options:
+        - 'New minor version - first RC (MINOR/RC)'
+        - 'New minor version - subsequent RC (NONE/RC)'
+        - 'New minor version - last RC -> GA (NONE/REMOVE)'
+        - 'New patch/security version - No RCs (PATCH/NONE)'
+        - 'New major version - master -> RC (MAJOR/RC)'
+        - 'New major version - subsequent RC (NONE/RC)'
+        - 'New major version - last RC -> GA (NONE/REMOVE)'
+      
+jobs:
+  CreateRelease:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Release Types
+        run: |
+          [[ "${{ inputs.release_type }}" =~ [^\(]+\((MAJOR|MINOR|PATCH|NONE)/(RC|REMOVE|NONE)\) ]] || {
+            echo "::error::Release type '${{ inputs.release_type }}' not valid"
+            exit 1
+          }
+          echo "version_fragment=${BASH_REMATCH[1]}" >> $GITHUB_ENV
+          echo "prerelease_fragment=${BASH_REMATCH[2]}" >> $GITHUB_ENV
+          echo "::notice::version_fragment: ${BASH_REMATCH[1]} prerelease_fragment: ${BASH_REMATCH[2]}" 
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'          
+
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.branch }}
+          # Relative path under $GITHUB_WORKSPACE to place the repository
+          path: 'asterisk'
+          # Whether to execute `git clean -ffdx && git reset --hard HEAD` before fetching
+          # Default: true
+          clean: true
+          # Number of commits to fetch. 0 indicates all history for all branches and tags
+          # which we need to determine the last tag.
+          fetch-depth: 0
+          # Add repository path as safe.directory for Git global config by running `git
+          # config --global --add safe.directory <path>`
+          # Default: true
+          set-safe-directory: true
+
+      - name: Get last tag
+        run: |
+          cd asterisk
+          git config --local user.email "asteriskteam@digium.com"
+          git config --local user.name "Asterisk Development Team"
+          last_tag=$(git describe --abbrev=0)
+          echo "last_tag=$last_tag" >> $GITHUB_ENV
+          echo "::notice::Last tag: $last_tag"
+
+      - name: Bump Version
+        uses: cookbenjamin/update-version@v1.0.1
+        with:
+          current-version: "${{ env.last_tag }}"
+          increment-version-fragment: "${{ env.version_fragment }}"
+          prerelease-fragment: "${{ env.prerelease_fragment }}"
+
+      - name: Tag release
+        run: |
+          new_version="${{ steps.bump_version.outputs.updated-version }}"
+          echo "new_version=${{ steps.bump_version.outputs.updated-version }}" >> $GITHUB_ENV
+          echo "::notice::New version: $new_version"
+          git tag -a "$new_version" -m "$new_version"
+
+      - name: Install and Run Alembic
+        run: |
+          echo "::notice::Installing Alembic"
+          pip install alembic
+          echo "::notice::Running Alembic to create SQL scripts"
+          cd asterisk/contrib/ast-db-manage
+          ./alembic_creator.py -d mysql -s config -s voicemail -s queue_log -s cdr -o $GITHUB_WORKSPACE/realtime/mysql || {
+            echo "::error::Unable to create scripts for mysql"
+            exit 1
+          }
+          ./alembic_creator.py -d postgresql -s config -s voicemail -s queue_log -s cdr -o $GITHUB_WORKSPACE/realtime/postgresql || {
+            echo "::error::Unable to create scripts for postgresql"
+            exit 1
+          }
+      
+      - name: Save sql scripts
+        uses: actions/upload-artifact@v3
+        with:
+          name: sql-scripts
+          path: "${{ env.GITHUB_WORKSPACE }}/realtime/" 
