@@ -28,7 +28,7 @@ jobs:
   CreateRelease:
     runs-on: ubuntu-latest
     steps:
-      - name: Setup Release Types
+      - name: Setup
         run: |
           [[ "${{ inputs.release_type }}" =~ [^\(]+\((MAJOR|MINOR|PATCH|NONE)/(RC|REMOVE|NONE)\) ]] || {
             echo "::error::Release type '${{ inputs.release_type }}' not valid"
@@ -36,7 +36,7 @@ jobs:
           }
           echo "version_fragment=${BASH_REMATCH[1]}" >> $GITHUB_ENV
           echo "prerelease_fragment=${BASH_REMATCH[2]}" >> $GITHUB_ENV
-          echo "::notice::version_fragment: ${BASH_REMATCH[1]} prerelease_fragment: ${BASH_REMATCH[2]}" 
+          echo "::notice::version_fragment: ${BASH_REMATCH[1]} prerelease_fragment: ${BASH_REMATCH[2]}"
 
       - name: Checkout
         uses: actions/checkout@v3
@@ -85,7 +85,6 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-          cache: 'pip'
 
       - name: Install and Run Alembic
         run: |
