@@ -39,10 +39,14 @@ jobs:
           echo "::notice::version_fragment: ${BASH_REMATCH[1]} prerelease_fragment: ${BASH_REMATCH[2]}"
           git config --global user.email "asteriskteam@digium.com"
           git config --global user.name "Asterisk Development Team"
-          last_tag_ref=$(git ls-remote --sort="v:refname" --refs -t git@github.com:$GITHUB_REPOSITORY "refs/tags/${{ inputs.branch }}.*" | tail -1)
-          last_version=${last_tag_ref##*/}
+          last_version=$(gh api repos/${OWNER}/${REPO}/git/matching-refs/tags/$BRANCH -q '.[-1].ref[10:]')
           echo "last_version=$last_version" >> $GITHUB_ENV
           echo "::notice::Last version: $last_version"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          BRANCH: ${{ inputs.branch }}
 
       - id: bump_version 
         name: Bump Version
