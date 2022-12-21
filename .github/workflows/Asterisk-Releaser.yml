@@ -101,6 +101,7 @@ jobs:
           cd asterisk
           echo "::notice::New version: $new_version"
           git tag -a "$new_version" -m "$new_version"
+          git push
           git push --tags
         env:
           new_version: "${{ steps.bump_version.outputs.updated-version }}"
