@@ -61,13 +61,14 @@ jobs:
           git config --local user.email "asteriskteam@digium.com"
           git config --local user.name "Asterisk Development Team"
           last_tag=$(git describe --abbrev=0)
-          echo "last_tag=$last_tag" >> $GITHUB_ENV
-          echo "::notice::Last tag: $last_tag"
+          last_version=${last_tag#v*}
+          echo "last_version=$last_version" >> $GITHUB_ENV
+          echo "::notice::Last version: $last_version"
 
       - name: Bump Version
         uses: cookbenjamin/update-version@v1.0.1
         with:
-          current-version: "${{ env.last_tag }}"
+          current-version: "${{ env.last_version }}"
           increment-version-fragment: "${{ env.version_fragment }}"
           prerelease-fragment: "${{ env.prerelease_fragment }}"
 
