@@ -71,14 +71,6 @@ jobs:
           # Default: true
           set-safe-directory: true
 
-      - name: Tag release
-        run: |
-          cd asterisk
-          new_version="${{ steps.bump_version.outputs.updated-version }}"
-          echo "new_version=$new_version" >> $GITHUB_ENV
-          echo "::notice::New version: $new_version"
-          git tag -a "$new_version" -m "$new_version"
-
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
@@ -90,17 +82,25 @@ jobs:
           pip install alembic
           echo "::notice::Running Alembic to create SQL scripts"
           cd asterisk/contrib/ast-db-manage
-          ./alembic_creator.py -d mysql -s config -s voicemail -s queue_log -s cdr -o $GITHUB_WORKSPACE/realtime/mysql || {
+          ./alembic_creator.py -d mysql -s config -s voicemail -s queue_log -s cdr -o ../realtime/mysql || {
             echo "::error::Unable to create scripts for mysql"
             exit 1
           }
-          ./alembic_creator.py -d postgresql -s config -s voicemail -s queue_log -s cdr -o $GITHUB_WORKSPACE/realtime/postgresql || {
+          ./alembic_creator.py -d postgresql -s config -s voicemail -s queue_log -s cdr -o ../realtime/postgresql || {
             echo "::error::Unable to create scripts for postgresql"
             exit 1
           }
+          cd ../../
+          git add contrib/realtime
+          git commit -a -m "Alembic SQL scripts for $new_version"
+        env:
+          new_version: "${{ steps.bump_version.outputs.updated-version }}"
       
-      - name: Save sql scripts
-        uses: actions/upload-artifact@v3
-        with:
-          name: sql-scripts
-          path: "realtime/" 
+      - name: Tag and commit release
+        run: |
+          cd asterisk
+          echo "::notice::New version: $new_version"
+          git tag -a "$new_version" -m "$new_version"
+          git push --tags
+        env:
+          new_version: "${{ steps.bump_version.outputs.updated-version }}"
