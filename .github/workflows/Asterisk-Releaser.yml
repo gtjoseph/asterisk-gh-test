@@ -37,31 +37,10 @@ jobs:
           echo "version_fragment=${BASH_REMATCH[1]}" >> $GITHUB_ENV
           echo "prerelease_fragment=${BASH_REMATCH[2]}" >> $GITHUB_ENV
           echo "::notice::version_fragment: ${BASH_REMATCH[1]} prerelease_fragment: ${BASH_REMATCH[2]}"
-
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ inputs.branch }}
-          # Relative path under $GITHUB_WORKSPACE to place the repository
-          path: 'asterisk'
-          # Whether to execute `git clean -ffdx && git reset --hard HEAD` before fetching
-          # Default: true
-          clean: true
-          # Number of commits to fetch. 0 indicates all history for all branches and tags
-          # which we need to determine the last tag.
-          fetch-depth: 0
-          # Add repository path as safe.directory for Git global config by running `git
-          # config --global --add safe.directory <path>`
-          # Default: true
-          set-safe-directory: true
-
-      - name: Get last tag
-        run: |
-          cd asterisk
-          git config --local user.email "asteriskteam@digium.com"
-          git config --local user.name "Asterisk Development Team"
-          last_tag=$(git describe --abbrev=0)
-          last_version=${last_tag#v*}
+          git config --global user.email "asteriskteam@digium.com"
+          git config --global user.name "Asterisk Development Team"
+          last_tag_ref=$(git ls-remote --sort="v:refname" --refs -t https://github.com/$GITHUB_REPOSITORY "refs/tags/${{ inputs.branch }}.*" | tail -1)
+          last_version=${last_tag_ref##*/}
           echo "last_version=$last_version" >> $GITHUB_ENV
           echo "::notice::Last version: $last_version"
 
@@ -72,6 +51,21 @@ jobs:
           current-version: "${{ env.last_version }}"
           increment-version-fragment: "${{ env.version_fragment }}"
           prerelease-fragment: "${{ env.prerelease_fragment }}"
+
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.branch }}
+          # Relative path under $GITHUB_WORKSPACE to place the repository
+          path: 'asterisk'
+          # Whether to execute `git clean -ffdx && git reset --hard HEAD` before fetching
+          # Default: true
+          clean: true
+          fetch-depth: 1
+          # Add repository path as safe.directory for Git global config by running `git
+          # config --global --add safe.directory <path>`
+          # Default: true
+          set-safe-directory: true
 
       - name: Tag release
         run: |
