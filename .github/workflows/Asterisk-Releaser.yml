@@ -74,6 +74,7 @@ jobs:
 
       - name: Tag release
         run: |
+          cd asterisk
           new_version="${{ steps.bump_version.outputs.updated-version }}"
           echo "new_version=${{ steps.bump_version.outputs.updated-version }}" >> $GITHUB_ENV
           echo "::notice::New version: $new_version"
