@@ -38,12 +38,6 @@ jobs:
           echo "prerelease_fragment=${BASH_REMATCH[2]}" >> $GITHUB_ENV
           echo "::notice::version_fragment: ${BASH_REMATCH[1]} prerelease_fragment: ${BASH_REMATCH[2]}" 
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-          cache: 'pip'          
-
       - name: Checkout
         uses: actions/checkout@v3
         with:
@@ -83,6 +77,12 @@ jobs:
           echo "new_version=${{ steps.bump_version.outputs.updated-version }}" >> $GITHUB_ENV
           echo "::notice::New version: $new_version"
           git tag -a "$new_version" -m "$new_version"
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
 
       - name: Install and Run Alembic
         run: |
