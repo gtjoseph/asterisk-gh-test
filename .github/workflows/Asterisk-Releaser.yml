@@ -105,4 +105,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: sql-scripts
-          path: "${{ env.GITHUB_WORKSPACE }}/realtime/" 
+          path: "realtime/" 
