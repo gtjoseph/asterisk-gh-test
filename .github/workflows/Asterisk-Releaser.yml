@@ -95,13 +95,23 @@ jobs:
           git commit -a -m "Alembic SQL scripts for $new_version"
         env:
           new_version: "${{ steps.bump_version.outputs.updated-version }}"
-      
+
+      - name: Save SQL scripts to workflow run
+        uses: actions/upload-artifact@v3
+        with:
+          name: sql-scripts
+          path: "asterisk/contrib/ast-db-manage/realtime/"
+
+      - name: Create change log
+
+
       - name: Tag and commit release
+        # skip for now
+        if: false
         run: |
           cd asterisk
           echo "::notice::New version: $new_version"
           git tag -a "$new_version" -m "$new_version"
-          git push
-          git push --tags
+          git push --follow-tags
         env:
           new_version: "${{ steps.bump_version.outputs.updated-version }}"
