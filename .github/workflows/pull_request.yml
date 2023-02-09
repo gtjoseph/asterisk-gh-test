@@ -1,0 +1,13 @@
+name: Send Email Test
+run-name: ${{ github.actor }} is sending an email
+on:
+  pull_request:
+    types: [opened, reopened]
+    
+jobs:
+  PRCheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Echo PR
+        run: |
+          echo '${{toJSON(github.event)}}'
