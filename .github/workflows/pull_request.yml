@@ -36,9 +36,6 @@ jobs:
           echo "PWD: $PWD"
           mount
 
-      - name: Pre-checkout
-        run: echo "::group::Checkout"
-
 #      - name: Checkout Asterisk (local testing)
 #        if: env.ACT && env.ASTERISK_URL != ''
 #        run: |
@@ -62,9 +59,6 @@ jobs:
           # Default: true
           set-safe-directory: true
 
-      - name: Post-checkout
-        run: echo "::endgroup::"
-        
       - name: Setup Asterisk Build Environment
         run: |
           cd asterisk
