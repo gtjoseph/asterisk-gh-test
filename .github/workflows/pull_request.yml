@@ -2,20 +2,22 @@ name: Process Pull Request
 run-name: ${{ github.actor }} is doing a pull
 on:
 #  workflow_dispatch:
-  pull_request:
-    types: [opened, reopened]
+  issue_comment
+#  pull_request:
+#    types: [opened, reopened]
 
-permissions:
-  actions: read
-  checks: write
-  contents: read
-  deployments: read
-  issues: read
-  pull-requests: write
-  statuses: write
+#permissions:
+#  actions: read
+#  checks: write
+#  contents: read
+#  deployments: read
+#  issues: read
+#  pull-requests: write
+#  statuses: write
 
 jobs:
   UnitTests:
+    if: ${{ github.event.issue.pull_request }}
     runs-on: ubuntu-latest
     container:
       image: public.ecr.aws/t8c9l3c7/asteriskci-agent-rocky8:latest
@@ -23,6 +25,13 @@ jobs:
         - /srv/cache/unittests:/usr/src/asterisk/asterisk-gh-test/asterisk
 
     steps:
+      - name: Precheck
+        run: |
+          echo A comment on PR $NUMBER
+          echo ${{ toJSON(github.event) }}
+        env:
+          NUMBER: ${{ github.event.issue.number }}
+    
       - name: Setup for local ACT
         if: ${{ env.ACT }}
         run: |
@@ -80,6 +89,7 @@ jobs:
           touch ./tests/CI/output/is-built
 
       - name: Install Asterisk
+        if: ${{ success() }}
         run: |
           cd asterisk
           echo "PWD: $PWD"
@@ -91,6 +101,7 @@ jobs:
           touch ./tests/CI/output/is-installed
 
       - name: Run Unit Tests
+        if: ${{ success() }}
         run: |
           cd asterisk
           echo "PWD: $PWD"
@@ -100,6 +111,7 @@ jobs:
             --unittest-command="test execute categoty /main/json"
 
       - name: Save Output
+        if: ${{ always() }}
         uses: actions/upload-artifact@v3
         with:
           name: "Unit Uest Results"
