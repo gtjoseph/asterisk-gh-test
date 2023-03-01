@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 CIDIR=$(dirname $(readlink -fn $0))
+GITHUB=0
 COVERAGE=0
 REF_DEBUG=0
 DISABLE_BINARY_MODULES=0

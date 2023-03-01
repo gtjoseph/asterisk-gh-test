@@ -25,6 +25,8 @@ for a in "$@" ; do
 done
 
 runner() {
+	[ $GITHUB -eq 1 ] && echo "::group::$1"
 	( set -x ; ${@} )
+	[ $GITHUB -eq 1 ] && echo "::endgroup::"
 }
 

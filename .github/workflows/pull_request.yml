@@ -25,13 +25,6 @@ jobs:
         - /srv/cache/unittests:/usr/src/asterisk/asterisk-gh-test/asterisk
 
     steps:
-      - name: Precheck
-        run: |
-          echo A comment on PR $NUMBER
-          echo '${{ toJSON(github.event) }}'
-        env:
-          NUMBER: ${{ github.event.issue.number }}
-    
       - name: Setup for local ACT
         if: ${{ env.ACT }}
         run: |
@@ -42,6 +35,9 @@ jobs:
           echo "::notice::Setting ASTERISK_CI_URL and ASTERISK_URL from environment"
           echo "PWD: $PWD"
           mount
+
+      - name: Pre-checkout
+        run: echo "::group::Checkout"
 
 #      - name: Checkout Asterisk (local testing)
 #        if: env.ACT && env.ASTERISK_URL != ''
@@ -66,6 +62,9 @@ jobs:
           # Default: true
           set-safe-directory: true
 
+      - name: Post-checkout
+        run: echo "::endgroup::"
+        
       - name: Setup Asterisk Build Environment
         run: |
           cd asterisk
@@ -76,7 +75,10 @@ jobs:
           chmod g+s /srv/cache/ccache
           mkdir -p tests/CI/output || :
           chown -R asteriskci:users tests/CI/output
-        
+          echo "::group::github_trigger_event"
+          echo '${{ toJSON(github.event) }}' > tests/CI/output/event.json
+          echo "::endgroup::"
+
       - name: Build Asterisk
         run: |
           cd asterisk
@@ -85,7 +87,7 @@ jobs:
             echo "Asterisk is already built"
             exit 0
           fi
-          ./tests/CI/buildAsterisk.sh --branch-name=master --output-dir=./tests/CI/output
+          ./tests/CI/buildAsterisk.sh --github --branch-name=master --output-dir=./tests/CI/output
           touch ./tests/CI/output/is-built
 
       - name: Install Asterisk
@@ -97,7 +99,7 @@ jobs:
             echo "Asterisk is already installed"
             exit 0
           fi
-          ./tests/CI/installAsterisk.sh --uninstall-all --branch-name=master --user-group=asteriskci:users 
+          ./tests/CI/installAsterisk.sh --github --uninstall-all --branch-name=master --user-group=asteriskci:users 
           touch ./tests/CI/output/is-installed
 
       - name: Run Unit Tests
@@ -105,7 +107,7 @@ jobs:
         run: |
           cd asterisk
           echo "PWD: $PWD"
-          tests/CI/runUnittests.sh --user-group=asteriskci:users \
+          tests/CI/runUnittests.sh --github --user-group=asteriskci:users \
             --output-dir=./tests/CI/output \
             --output-xml=./tests/CI/output/unittests-results.xml \
             --unittest-command="test execute categoty /main/json"
