@@ -1,10 +1,10 @@
 name: Process Pull Request
-run-name: ${{ github.actor }} is doing a pull
+run-name: ${{ github.actor }} is doing a pull request
 on:
 #  workflow_dispatch:
-  issue_comment
-#  pull_request:
-#    types: [opened, reopened]
+#  issue_comment
+  pull_request:
+    types: [opened, reopened]
 
 #permissions:
 #  actions: read
@@ -16,8 +16,8 @@ on:
 #  statuses: write
 
 jobs:
-  UnitTests:
-    if: ${{ github.event.issue.pull_request }}
+  AsteriskUnitTests:
+#    if: (github.event.issue.pull_request && startsWith(github.event.comment.body, 'recheck'))
     runs-on: ubuntu-latest
     container:
       image: public.ecr.aws/t8c9l3c7/asteriskci-agent-rocky8:latest
@@ -118,15 +118,11 @@ jobs:
           path: asterisk/tests/CI/output
 
       - name: Test Report
-#        if: false
         uses: dorny/test-reporter@v1
         if: success() || failure()
         with:
-          name: Asterisk Unit Tests
+          name: Asterisk Unit Tests Report
           working-directory: asterisk
           path: ./tests/CI/output/unittests-results.xml
           reporter: java-junit
           token: ${{ secrets.GITHUB_TOKEN }}
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_APP_TOKEN }}
-          
