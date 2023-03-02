@@ -7,13 +7,19 @@ on:
     types: [opened, reopened]
 
 permissions:
-  actions: read
-  checks: write
-  contents: read
-  deployments: read
-  issues: read
-  pull-requests: write
-  statuses: write
+  Actions: write
+  Checks: write
+  Contents: write
+  Deployments: write
+  Discussions: write
+  Issues: write
+  Metadata: read
+  Packages: write
+  Pages: write
+  PullRequests: write
+  RepositoryProjects: write
+  SecurityEvents: write
+  Statuses: write
 
 jobs:
   AsteriskUnitTests:
