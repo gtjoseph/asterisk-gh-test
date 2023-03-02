@@ -20,6 +20,9 @@ permissions:
   security-events: write
   statuses: write
 
+env:
+  GITHUB_TOKEN: ${{ secrets.ASTERISKTEAM_PAT }}
+
 jobs:
   AsteriskUnitTests:
 #    if: (github.event.issue.pull_request && startsWith(github.event.comment.body, 'recheck'))
@@ -126,4 +129,4 @@ jobs:
           working-directory: asterisk
           path: ./tests/CI/output/unittests-results.xml
           reporter: java-junit
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.ASTERISKTEAM_PAT }}
