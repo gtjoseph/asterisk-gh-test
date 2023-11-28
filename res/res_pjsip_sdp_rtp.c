@@ -650,6 +650,43 @@ static pjmedia_sdp_attr* generate_rtpmap_attr(struct ast_sip_session *session, p
 	return attr;
 }
 
+
+static pjmedia_sdp_attr* generate_rtpmap_attr2(struct ast_sip_session *session, pjmedia_sdp_media *media, pj_pool_t *pool,
+					      int rtp_code, int asterisk_format, struct ast_format *format, int code, int sample_rate)
+{
+#ifndef HAVE_PJSIP_ENDPOINT_COMPACT_FORM
+	extern pj_bool_t pjsip_use_compact_form;
+#else
+	pj_bool_t pjsip_use_compact_form = pjsip_cfg()->endpt.use_compact_form;
+#endif
+	pjmedia_sdp_rtpmap rtpmap;
+	pjmedia_sdp_attr *attr = NULL;
+	char tmp[64];
+	enum ast_rtp_options options = session->endpoint->media.g726_non_standard ?
+		AST_RTP_OPT_G726_NONSTANDARD : 0;
+
+	snprintf(tmp, sizeof(tmp), "%d", rtp_code);
+	pj_strdup2(pool, &media->desc.fmt[media->desc.fmt_count++], tmp);
+
+	if (rtp_code <= AST_RTP_PT_LAST_STATIC && pjsip_use_compact_form) {
+		return NULL;
+	}
+
+	rtpmap.pt = media->desc.fmt[media->desc.fmt_count - 1];
+	rtpmap.clock_rate = sample_rate;
+	ast_log(LOG_ERROR, "Generating rtpmap attribute with clock rate: %d\n", rtpmap.clock_rate);
+	pj_strdup2(pool, &rtpmap.enc_name, ast_rtp_lookup_mime_subtype2(asterisk_format, format, code, options));
+	if (!pj_stricmp2(&rtpmap.enc_name, "opus")) {
+		pj_cstr(&rtpmap.param, "2");
+	} else {
+		pj_cstr(&rtpmap.param, NULL);
+	}
+
+	pjmedia_sdp_rtpmap_to_attr(pool, &rtpmap, &attr);
+
+	return attr;
+}
+
 static pjmedia_sdp_attr* generate_fmtp_attr(pj_pool_t *pool, struct ast_format *format, int rtp_code)
 {
 	struct ast_str *fmtp0 = ast_str_alloca(256);
@@ -1749,6 +1786,11 @@ static int create_outgoing_sdp_stream(struct ast_sip_session *session, struct as
 	pj_sockaddr ip;
 	int direct_media_enabled = !ast_sockaddr_isnull(&session_media->direct_media_addr) &&
 		ast_format_cap_count(session->direct_media_cap);
+
+	int bitRates[4] = { 0, 0, 0, 0 };
+	int added_rtp_type = 0;
+	struct ast_rtp_codecs *zcodecs;
+
 	SCOPE_ENTER(1, "%s Type: %s %s\n", ast_sip_session_get_name(session),
 		ast_codec_media_type2str(media_type), ast_str_tmp(128, ast_stream_to_str(stream, &STR_TMP)));
 
@@ -1938,7 +1980,27 @@ static int create_outgoing_sdp_stream(struct ast_sip_session *session, struct as
 		}
 
 		if ((attr = generate_rtpmap_attr(session, media, pool, rtp_code, 1, format, 0))) {
+			int newrate = ast_rtp_lookup_sample_rate2(1, format, 0);
 			media->attr[media->attr_count++] = attr;
+			// lolcode
+			if (bitRates[0] == 0) {
+				bitRates[0] = newrate;
+			}
+			else if ((newrate != bitRates[0])) {
+				if (bitRates[1] == 0) {
+					bitRates[1] = newrate;
+				}
+				else if ((newrate != bitRates[1])) {
+					if (bitRates[2] == 0) {
+						bitRates[2] = newrate;
+					}
+					else if ((newrate != bitRates[2])) {
+						if (bitRates[3] == 0) {
+							bitRates[3] = newrate;
+						}
+					}
+				}
+			}
 		}
 
 		if ((attr = generate_fmtp_attr(pool, format, rtp_code))) {
@@ -1956,6 +2018,38 @@ static int create_outgoing_sdp_stream(struct ast_sip_session *session, struct as
 		}
 	}
 
+	/* Copy any non asterisk formats to the rx side */
+	zcodecs = ast_rtp_instance_get_codecs(session_media->rtp);
+	for (int idx = 0; idx < AST_VECTOR_SIZE(&zcodecs->payload_mapping_tx); ++idx) {
+		struct ast_rtp_payload_type *type;
+		type = AST_VECTOR_GET(&zcodecs->payload_mapping_tx, idx);
+		if (!type) {
+			continue;
+		}
+		if (!type->asterisk_format && type->primary_mapping) {
+			ast_rtp_codecs_payload_set_rx_bitrate(ast_rtp_instance_get_codecs(session_media->rtp), idx, type->format, type->bitrate);
+		}
+	}
+	/* Use the rx list of non asterisk formats to build the sdp attributes */
+	for (int idx = 0; idx < AST_VECTOR_SIZE(&zcodecs->payload_mapping_rx); ++idx) {
+		struct ast_rtp_payload_type *type;
+		type = AST_VECTOR_GET(&zcodecs->payload_mapping_rx, idx);
+		if (!type) {
+			continue;
+		}
+		if (!type->asterisk_format && type->primary_mapping) {
+			int newrate = type->bitrate;
+			if ((attr = generate_rtpmap_attr2(session, media, pool, idx, 0, NULL, AST_RTP_DTMF, newrate))) {
+				/* note that we are adding attributes based on an existing offer so they don't need to be made from scratch */
+				added_rtp_type = 1;
+				media->attr[media->attr_count++] = attr;
+				snprintf(tmp, sizeof(tmp), "%d 0-16", (idx));
+				attr = pjmedia_sdp_attr_create(pool, "fmtp", pj_cstr(&stmp, tmp));
+				media->attr[media->attr_count++] = attr;
+			}
+		}
+	}
+
 	/* Add non-codec formats */
 	if (ast_sip_session_is_pending_stream_default(session, stream) && media_type != AST_MEDIA_TYPE_VIDEO
 		&& media->desc.fmt_count < PJMEDIA_MAX_SDP_FMT) {
@@ -1969,14 +2063,24 @@ static int create_outgoing_sdp_stream(struct ast_sip_session *session, struct as
 				continue;
 			}
 
-			if ((attr = generate_rtpmap_attr(session, media, pool, rtp_code, 0, NULL, index))) {
-				media->attr[media->attr_count++] = attr;
+			if (index != AST_RTP_DTMF) {
+				if ((attr = generate_rtpmap_attr(session, media, pool, rtp_code, 0, NULL, index))) {
+					media->attr[media->attr_count++] = attr;
+				}
 			}
-
-			if (index == AST_RTP_DTMF) {
-				snprintf(tmp, sizeof(tmp), "%d 0-16", rtp_code);
-				attr = pjmedia_sdp_attr_create(pool, "fmtp", pj_cstr(&stmp, tmp));
-				media->attr[media->attr_count++] = attr;
+			else if (!added_rtp_type) {
+				/* If we aren't going based off an existing offer, walk through the possible bitrates for the
+				   2833/4733 digits and add them manually */
+				for (int i=0; i<4; i++) {
+					if(bitRates[i] != 0 ) {
+						if ((attr = generate_rtpmap_attr2(session, media, pool, (rtp_code+i), 0, NULL, index, bitRates[i]))) {
+							media->attr[media->attr_count++] = attr;
+						}
+						snprintf(tmp, sizeof(tmp), "%d 0-16", (rtp_code+i));
+						attr = pjmedia_sdp_attr_create(pool, "fmtp", pj_cstr(&stmp, tmp));
+						media->attr[media->attr_count++] = attr;
+					}
+				}
 			}
 
 			if (media->desc.fmt_count == PJMEDIA_MAX_SDP_FMT) {
@@ -1984,7 +2088,6 @@ static int create_outgoing_sdp_stream(struct ast_sip_session *session, struct as
 			}
 		}
 	}
-
 
 	/* If no formats were actually added to the media stream don't add it to the SDP */
 	if (!media->desc.fmt_count) {

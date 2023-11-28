@@ -1380,6 +1380,8 @@ int ast_rtp_codecs_payloads_set_rtpmap_type_rate(struct ast_rtp_codecs *codecs, 
 			continue;
 		}
 
+		ast_log(LOG_DEBUG, "Comparing %d %s %s with %d %s %s", pt, mimetype, mimesubtype, t->payload_type.rtp_code, t->type, t->subtype);
+
 		/* if both sample rates have been supplied, and they don't match,
 		 * then this not a match; if one has not been supplied, then the
 		 * rates are not compared */
@@ -1399,6 +1401,7 @@ int ast_rtp_codecs_payloads_set_rtpmap_type_rate(struct ast_rtp_codecs *codecs, 
 		new_type->rtp_code = t->payload_type.rtp_code;
 		new_type->payload = pt;
 		new_type->primary_mapping = 1;
+		new_type->bitrate = sample_rate;
 		if (t->payload_type.asterisk_format
 			&& ast_format_cmp(t->payload_type.format, ast_format_g726) == AST_FORMAT_CMP_EQUAL
 			&& (options & AST_RTP_OPT_G726_NONSTANDARD)) {
@@ -1825,7 +1828,7 @@ static int rtp_codecs_find_non_primary_dynamic_rx(struct ast_rtp_codecs *codecs)
  * \return Numerical payload type
  * \retval -1 if could not assign.
  */
-static int rtp_codecs_assign_payload_code_rx(struct ast_rtp_codecs *codecs, int asterisk_format, struct ast_format *format, int code, int explicit)
+static int rtp_codecs_assign_payload_code_rx(struct ast_rtp_codecs *codecs, int asterisk_format, struct ast_format *format, int code, int explicit, int bitrate)
 {
 	int payload = code;
 	struct ast_rtp_payload_type *new_type;
@@ -1844,8 +1847,13 @@ static int rtp_codecs_assign_payload_code_rx(struct ast_rtp_codecs *codecs, int 
 	}
 
 	ast_rwlock_wrlock(&codecs->codecs_lock);
+
+	new_type->bitrate = bitrate;
+
 	if (payload > -1 && (payload < AST_RTP_PT_FIRST_DYNAMIC
 		|| AST_VECTOR_SIZE(&codecs->payload_mapping_rx) <= payload
+		// test if this is needed
+		//|| (explicit || !AST_VECTOR_GET(&codecs->payload_mapping_rx, payload)))) {
 		|| !AST_VECTOR_GET(&codecs->payload_mapping_rx, payload))) {
 		/*
 		 * The payload type is a static assignment
@@ -1926,7 +1934,7 @@ int ast_rtp_codecs_payload_code(struct ast_rtp_codecs *codecs, int asterisk_form
 
 	if (payload < 0) {
 		payload = rtp_codecs_assign_payload_code_rx(codecs, asterisk_format, format,
-			code, 0);
+			code, 0, 0);
 	}
 	ast_rwlock_unlock(&static_RTP_PT_lock);
 
@@ -1935,10 +1943,15 @@ int ast_rtp_codecs_payload_code(struct ast_rtp_codecs *codecs, int asterisk_form
 
 int ast_rtp_codecs_payload_set_rx(struct ast_rtp_codecs *codecs, int code, struct ast_format *format)
 {
-	return rtp_codecs_assign_payload_code_rx(codecs, 1, format, code, 1);
+	return rtp_codecs_assign_payload_code_rx(codecs, 1, format, code, 1, 0);
 }
 
-int ast_rtp_codecs_payload_code_tx(struct ast_rtp_codecs *codecs, int asterisk_format, const struct ast_format *format, int code)
+int ast_rtp_codecs_payload_set_rx_bitrate(struct ast_rtp_codecs *codecs, int code, struct ast_format *format, int bitrate)
+{
+	return rtp_codecs_assign_payload_code_rx(codecs, 1, format, code, 0, bitrate);
+}
+
+int ast_rtp_codecs_payload_code_tx_bitrate(struct ast_rtp_codecs *codecs, int asterisk_format, const struct ast_format *format, int code, int bitrate)
 {
 	struct ast_rtp_payload_type *type;
 	int idx;
@@ -1953,7 +1966,8 @@ int ast_rtp_codecs_payload_code_tx(struct ast_rtp_codecs *codecs, int asterisk_f
 			}
 
 			if (!type->asterisk_format
-				&& type->rtp_code == code) {
+				&& type->rtp_code == code
+				&& (!bitrate || type->bitrate == bitrate)) {
 				payload = idx;
 				break;
 			}
@@ -1983,6 +1997,11 @@ int ast_rtp_codecs_payload_code_tx(struct ast_rtp_codecs *codecs, int asterisk_f
 	}
 
 	return payload;
+}
+
+int ast_rtp_codecs_payload_code_tx(struct ast_rtp_codecs *codecs, int asterisk_format, const struct ast_format *format, int code)
+{
+	return ast_rtp_codecs_payload_code_tx_bitrate(codecs, asterisk_format, format, code, 0);
 }
 
 int ast_rtp_codecs_find_payload_code(struct ast_rtp_codecs *codecs, int payload)
@@ -3700,7 +3719,11 @@ int ast_rtp_engine_init(void)
 	/* this is the sample rate listed in the RTP profile for the G.722 codec, *NOT* the actual sample rate of the media stream */
 	set_next_mime_type(ast_format_g722, 0, "audio", "G722", 8000);
 	set_next_mime_type(ast_format_g726_aal2, 0, "audio", "AAL2-G726-32", 8000);
+	/* we need all 4 of these or ast_rtp_codecs_payloads_set_rtpmap_type_rate will not examine it */
 	set_next_mime_type(NULL, AST_RTP_DTMF, "audio", "telephone-event", 8000);
+	set_next_mime_type(NULL, AST_RTP_DTMF, "audio", "telephone-event", 16000);
+	set_next_mime_type(NULL, AST_RTP_DTMF, "audio", "telephone-event", 48000);
+	set_next_mime_type(NULL, AST_RTP_DTMF, "audio", "telephone-event", 24000);
 	set_next_mime_type(NULL, AST_RTP_CISCO_DTMF, "audio", "cisco-telephone-event", 8000);
 	set_next_mime_type(NULL, AST_RTP_CN, "audio", "CN", 8000);
 	set_next_mime_type(ast_format_jpeg, 0, "video", "JPEG", 90000);

@@ -4230,7 +4230,7 @@ static int ast_rtp_dtmf_begin(struct ast_rtp_instance *instance, char digit)
 {
 	struct ast_rtp *rtp = ast_rtp_instance_get_data(instance);
 	struct ast_sockaddr remote_address = { {0,} };
-	int hdrlen = 12, res = 0, i = 0, payload = 101;
+	int hdrlen = 12, res = 0, i = 0, payload = 101, sample_rate = 8000;
 	char data[256];
 	unsigned int *rtpheader = (unsigned int*)data;
 
@@ -4257,12 +4257,41 @@ static int ast_rtp_dtmf_begin(struct ast_rtp_instance *instance, char digit)
 		return -1;
 	}
 
-	/* Grab the payload that they expect the RFC2833 packet to be received in */
-	payload = ast_rtp_codecs_payload_code_tx(ast_rtp_instance_get_codecs(instance), 0, NULL, AST_RTP_DTMF);
+	if (rtp->lasttxformat == ast_format_none) {
+		/* we haven't sent any audio yet so we have to lookup both the payload type and
+		   bitrate.  This should get us the first stored dtmf type. */
+		struct ast_rtp_payload_type *type;
+		int idx;
+		struct ast_rtp_codecs *codecs = ast_rtp_instance_get_codecs(instance);
+		ast_rwlock_rdlock(&codecs->codecs_lock);
+		for (idx = 0; idx < AST_VECTOR_SIZE(&codecs->payload_mapping_tx); ++idx) {
+			type = AST_VECTOR_GET(&codecs->payload_mapping_tx, idx);
+			if (!type) {
+				continue;
+			}
+			if (type->rtp_code == AST_RTP_DTMF) {
+				payload = idx;
+				sample_rate = type->bitrate;
+				break;
+			}
+		}
+		ast_rwlock_unlock(&codecs->codecs_lock);
+	} else {
+		/* If we get 0 back that can be ok, provided a default rate is set */
+		sample_rate = ast_format_get_codec(rtp->lasttxformat)->sample_rate;
+		/* Grab the payload that they expect the RFC2833 packet to be received in */
+		payload = ast_rtp_codecs_payload_code_tx_bitrate(ast_rtp_instance_get_codecs(instance), 0, NULL, AST_RTP_DTMF, sample_rate);
+	}
+	/* If this returns -1, we are being asked to send digits for a sample rate that is outside
+	   what was negotiated for. Fall back if possible. */
+	if (payload == -1) {
+		return -1;
+	}
+	ast_log(LOG_DEBUG, "Sending digit '%d' at rate %d\n", digit, sample_rate);
 
 	rtp->dtmfmute = ast_tvadd(ast_tvnow(), ast_tv(0, 500000));
 	rtp->send_duration = 160;
-	rtp->lastts += calc_txstamp(rtp, NULL) * DTMF_SAMPLE_RATE_MS;
+	rtp->lastts += calc_txstamp(rtp, NULL) * (sample_rate/1000);
 	rtp->lastdigitts = rtp->lastts + rtp->send_duration;
 
 	/* Create the actual packet that we will be sending */

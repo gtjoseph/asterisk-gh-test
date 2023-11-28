@@ -311,6 +311,8 @@ struct ast_rtp_payload_type {
 	unsigned int primary_mapping:1;
 	/*! When the payload type became non-primary. */
 	struct timeval when_retired;
+	/*! Bitrate to over-ride mime type defaults */
+	int bitrate;
 };
 
 /* Common RTCP report types */
@@ -1789,6 +1791,21 @@ int ast_rtp_codecs_payload_code(struct ast_rtp_codecs *codecs, int asterisk_form
 int ast_rtp_codecs_payload_set_rx(struct ast_rtp_codecs *codecs, int code, struct ast_format *format);
 
 /*!
+ * \brief Set a payload code with bitrate for use with a specific Asterisk format
+ *
+ * \param codecs Codecs structure to manipulate
+ * \param code The payload code
+ * \param format Asterisk format
+ * \param bitrate Bitrate of the format, 0 to use the format's default
+ *
+ * \retval 0 Payload was set to the given format
+ * \retval -1 Payload was in use or could not be set
+ *
+ * \since 20.0.0
+ */
+int ast_rtp_codecs_payload_set_rx_bitrate(struct ast_rtp_codecs *codecs, int code, struct ast_format *format, int bitrate);
+
+/*!
  * \brief Retrieve a tx mapped payload type based on whether it is an Asterisk format and the code
  * \since 14.0.0
  *
@@ -1801,6 +1818,21 @@ int ast_rtp_codecs_payload_set_rx(struct ast_rtp_codecs *codecs, int code, struc
  * \retval -1 if not found.
  */
 int ast_rtp_codecs_payload_code_tx(struct ast_rtp_codecs *codecs, int asterisk_format, const struct ast_format *format, int code);
+
+/*!
+ * \brief Retrieve a tx mapped payload type based on whether it is an Asterisk format and the code
+ * \since 20.0.0
+ *
+ * \param codecs Codecs structure to look in
+ * \param asterisk_format Non-zero if the given Asterisk format is present
+ * \param format Asterisk format to look for
+ * \param code The format to look for
+ * \param bitrate The bitrate to look for, zero if we don't care
+ *
+ * \return Numerical payload type
+ * \retval -1 if not found.
+ */
+int ast_rtp_codecs_payload_code_tx_bitrate(struct ast_rtp_codecs *codecs, int asterisk_format, const struct ast_format *format, int code, int bitrate);
 
 /*!
  * \brief Search for the tx payload type in the ast_rtp_codecs structure
