@@ -1,13 +1,13 @@
 
-Change Log for Release asterisk-20.7.0-rc1
+Change Log for Release asterisk-20.7.0
 ========================================
 
 Links:
 ----------------------------------------
 
- - [Full ChangeLog](https://downloads.asterisk.org/pub/telephony/asterisk/releases/ChangeLog-20.7.0-rc1.md)  
- - [GitHub Diff](https://github.com/asterisk/asterisk/compare/20.6.0...20.7.0-rc1)  
- - [Tarball](https://downloads.asterisk.org/pub/telephony/asterisk/asterisk-20.7.0-rc1.tar.gz)  
+ - [Full ChangeLog](https://downloads.asterisk.org/pub/telephony/asterisk/releases/ChangeLog-20.7.0.md)  
+ - [GitHub Diff](https://github.com/asterisk/asterisk/compare/20.6.0...20.7.0)  
+ - [Tarball](https://downloads.asterisk.org/pub/telephony/asterisk/asterisk-20.7.0.tar.gz)  
  - [Downloads](https://downloads.asterisk.org/pub/telephony/asterisk)  
 
 Summary:
@@ -105,12 +105,13 @@ Commits By Author:
   - main/utils: Simplify the FreeBSD ast_get_tid() handling
   - BuildSystem: Bump autotools versions on OpenBSD.
 
-- ### George Joseph (5):
+- ### George Joseph (6):
   - .github: Update github-script to v7 and fix a rest bug
   - Reduce startup/shutdown verbose logging
   - pjsip show channelstats: Prevent possible segfault when faxing
   - .github: Remove start_version from Releaser
   - .github: Add force_cherry_pick option to Releaser
+  - Update for 20.7.0-rc1
 
 - ### Joshua C. Colp (1):
   - utils: Make behavior of ast_strsep* match strsep.
