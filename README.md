@@ -8,7 +8,7 @@
   It is imperative that you read and fully understand the contents of
 the security information document before you attempt to configure and run
 an Asterisk server.
-
+TEST CHJANGE
 See [Important Security Considerations] for more information.
 
 ## WHAT IS ASTERISK ?
