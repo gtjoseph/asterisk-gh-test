@@ -43,8 +43,9 @@ jobs:
   ReCheck:
     name: ReCheck
     needs: Setup
-    uses: asterisk/asterisk-ci-actions/.github/workflows/AsteriskUnitGateTest.yml@main
+    uses: asterisk/asterisk-ci-actions/.github/workflows/AsteriskUnitGateTest.yml@main-test-native
     with:
+      actions_ref: "{ 'owner': 'asterisk', 'repo': 'asterisk-ci-actions', 'branch': 'main-test-native' }"
       test_type:         prrecheck
       asterisk_repo:     ${{ github.repository }}
       pr_number:         ${{ github.event.number }}

@@ -18,8 +18,9 @@ on:
 jobs:
   WeeklyTests:
     name: WeeklyTests
-    uses: asterisk/asterisk-ci-actions/.github/workflows/AsteriskNightlyTest.yml@main
+    uses: asterisk/asterisk-ci-actions/.github/workflows/AsteriskNightlyTest.yml@main-test-native
     with:
+      actions_ref: "{ 'owner': 'asterisk', 'repo': 'asterisk-ci-actions', 'branch': 'main-test-native' }"
       branches:   ${{ inputs.branches || vars.NIGHTLYTEST_BRANCHES }}
       group_list: ${{ inputs.group_list || vars.NIGHTLYTEST_LIST }}
       realtime:   true

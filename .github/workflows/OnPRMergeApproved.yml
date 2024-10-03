@@ -12,7 +12,9 @@ jobs:
   MergePR:
     name: MergePR
     if: contains(fromJSON(vars.MERGE_APPROVED_LABELS), github.event.label.name)
-    uses: asterisk/asterisk-ci-actions/.github/workflows/AsteriskMergePR.yml@main
+    uses: asterisk/asterisk-ci-actions/.github/workflows/AsteriskMergePR.yml@main-test-native
+    with:
+      actions_ref: "{ 'owner': 'asterisk', 'repo': 'asterisk-ci-actions', 'branch': 'main-test-native' }"
     secrets:
       TOKEN:                   ${{ secrets.GITHUB_TOKEN }}
       application_id:          ${{ secrets.ASTERISK_ORG_ACCESS_APP_ID }}
