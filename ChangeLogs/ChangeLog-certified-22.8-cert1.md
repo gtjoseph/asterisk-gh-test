@@ -1,11 +1,11 @@
 
-## Change Log for Release asterisk-certified-22.8-cert1-rc1
+## Change Log for Release asterisk-certified-22.8-cert1
 
 ### Links:
 
- - [Full ChangeLog](https://downloads.asterisk.org/pub/telephony/certified-asterisk/releases/ChangeLog-certified-22.8-cert1-rc1.html)  
- - [GitHub Diff](https://github.com/asterisk/asterisk/compare/certified-20.7-cert9...certified-22.8-cert1-rc1)  
- - [Tarball](https://downloads.asterisk.org/pub/telephony/certified-asterisk/asterisk-certified-22.8-cert1-rc1.tar.gz)  
+ - [Full ChangeLog](https://downloads.asterisk.org/pub/telephony/certified-asterisk/releases/ChangeLog-certified-22.8-cert1.html)  
+ - [GitHub Diff](https://github.com/asterisk/asterisk/compare/certified-20.7-cert9...certified-22.8-cert1)  
+ - [Tarball](https://downloads.asterisk.org/pub/telephony/certified-asterisk/asterisk-certified-22.8-cert1.tar.gz)  
  - [Downloads](https://downloads.asterisk.org/pub/telephony/certified-asterisk)  
 
 ### Summary:
